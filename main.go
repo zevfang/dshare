@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
+	"github.com/buger/jsonparser"
 	"io"
 	"io/ioutil"
 	"log"
@@ -62,42 +63,6 @@ func main() {
 
 	t := time.Now()
 
-	//耗时: 5.876626s
-	//for i := 0; i < 5; i++ {
-	//	fmt.Printf("玩家-[%d] \r\n", i)
-	//	time.Sleep(time.Second)
-	//}
-
-	//耗时: 1.00411s
-	//runtime.GOMAXPROCS(runtime.NumCPU())
-	//var wg sync.WaitGroup
-	//for i := 0; i < 5; i++ {
-	//	wg.Add(1)
-	//	go func(wg *sync.WaitGroup,n int) {
-	//		defer wg.Done()
-	//		fmt.Printf("玩家-[%d] \r\n", n)
-	//		time.Sleep(time.Second)
-	//	}(&wg,i)
-	//
-	//}
-	//wg.Wait()
-
-	//耗时: 1.007497s
-	//runtime.GOMAXPROCS(runtime.NumCPU())
-	//var wg sync.WaitGroup
-	//for i := 0; i < 5; i++ {
-	//	wg.Add(1)
-	//	go func(n int) {
-	//		defer wg.Done()
-	//		for j := 0; j < 100; j++{
-	//			fmt.Printf("玩家-[%d] \r\n", j)
-	//		}
-	//		time.Sleep(time.Second)
-	//	}(i)
-	//
-	//}
-	//wg.Wait()
-
 	//ch := make(chan int)
 	//for i := 0; i < 5; i++ {
 	//	go func(n int) {
@@ -106,7 +71,11 @@ func main() {
 	//}
 	//<-ch
 
-	Run()
+	s := `2,300303,聚飞光电,3.36,0.31,10.16%,11.80,451664,149043339,3.05,3.01,3.36,3.00,-,-,-,-,-,-,-,-,0.00%,5.65,4.42,52.64,2012-03-19`
+	datas := strings.Split(s, ",")
+	fmt.Println(datas)
+
+	//Run()
 
 	elapsed := time.Since(t)
 	fmt.Println("耗时:", elapsed)
@@ -122,6 +91,19 @@ func Run() {
 	fmt.Println(share.Data)
 }
 
+type Market struct {
+	/*
+		?,代码，名称，最新价，涨跌额，涨跌幅，振幅， 成交量(手)，成交额， 昨收，今开，最高，最低，
+		-,-,-,-,-,-,-,-,五分钟涨跌，量比，换手率，市盈率，上市时间
+
+		2,300303,聚飞光电,3.36,0.31,10.16%,11.80,451664,149043339,3.05,3.01,3.36,3.00,
+		-,-,-,-,-,-,-,-,0.00%,5.65,4.42,52.64,2012-03-19
+	*/
+	id   string
+	code string
+	name string
+}
+
 type DataSource struct {
 	Source *[]ResultData
 }
@@ -133,10 +115,13 @@ type ResultData struct {
 }
 
 type Share struct {
+	Total    int64
+	Pages    int64
 	PageSize string
 	Page     string
 	Body     io.ReadCloser
 	Data     ResultData
+	Market   Market
 }
 
 // Using HTTP.NewRequest access to specify the url of the body
@@ -190,7 +175,16 @@ func (s *Share) ApiSpider() *Share {
 	r_page := strings.Replace(r_rank, "pages", "\"pages\"", 1)
 	data := strings.Replace(r_page, "total", "\"total\"", 1)
 
+	bjson := []byte(data)
+
+	jsonparser.Get(bjson, "rank")
+	jsonparser.GetInt(bjson, "pages")
+	jsonparser.GetInt(bjson, "total")
+
+	// 2,300303,聚飞光电,3.36,0.31,10.16%,11.80,451664,149043339,3.05,3.01,3.36,3.00,-,-,-,-,-,-,-,-,0.00%,5.65,4.42,52.64,2012-03-19
+	// ?,代码，名称，最新价，涨跌额，涨跌幅，振幅， 成交量(手)，成交额， 昨收，今开，最高，最低，-,-,-,-,-,-,-,-,五分钟涨跌，量比，换手率，市盈率，上市时间
 	//deserialization to struct
+
 	result := ResultData{}
 	err = json.Unmarshal([]byte(data), &result)
 	if err != nil {
