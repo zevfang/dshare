@@ -1,1 +1,1 @@
-# 东方财富网-行情中心
+# Oriental Fortune Data Synchronization Service
